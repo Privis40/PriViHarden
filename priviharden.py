@@ -1,231 +1,109 @@
 #!/usr/bin/env python3
-import os
 import subprocess
+import os
 import time
-import sys
-from colorama import Fore, Style, init
+from tqdm import tqdm
+from colorama import Fore, init
 from fpdf import FPDF
-from datetime import datetime
 
+# Initialize Colorama for terminal colors
 init(autoreset=True)
 
-
-class PriViHarden:
+class PriViHardenElite:
     def __init__(self):
-        # BUG FIX #10: Removed emoji from banner — UnicodeEncodeError on latin-1 terminals.
-        self.banner = (
-            f"\n{Fore.CYAN}  ██████╗ ██████╗ ██╗██╗   ██╗██╗██╗  ██╗ █████╗ ██████╗ ██████╗ ███████╗\n"
-            f"{Fore.CYAN}  ██╔══██╗██╔══██╗██║██║   ██║██║██║  ██║██╔══██╗██╔══██╗██╔══██╗██╔════╝\n"
-            f"{Fore.CYAN}  ██████╔╝██████╔╝██║██║   ██║██║███████║███████║██████╔╝██║  ██║█████╗  \n"
-            f"{Fore.CYAN}  ██╔═══╝ ██╔══██╗██║╚██╗ ██╔╝ ██║██╔══██║██╔══██║██╔══██╗██║  ██║██╔══╝  \n"
-            f"{Fore.CYAN}  ██║     ██║  ██║██║ ╚████╔╝  ██║██║  ██║██║  ██║██║  ██║██████╔╝███████╗\n"
-            f"{Fore.RED}  PriViSecurity | Hardening Auditor v2.0 | Developed by Prince Ubebe\n"
-            f"{Fore.YELLOW}  {'=' * 82}\n"
-        )
-        self.results = []
         self.score = 100
+        self.logs = []
+        self.banner = (
+            f"\n{Fore.CYAN}  ██████╗ ██████╗ ██╗██╗   ██╗██╗███████╗███████╗ ██████╗\n"
+            f"{Fore.CYAN}  ██╔══██╗██╔══██╗██║██║   ██║██║██╔════╝██╔════╝██╔════╝\n"
+            f"{Fore.CYAN}  ██████╔╝██████╔╝██║██║   ██║██║███████╗█████╗  ██║     \n"
+            f"{Fore.CYAN}  ██╔═══╝ ██╔══██╗██║╚██╗ ██╔╝ ██║╚════██║██╔══╝  ██║     \n"
+            f"{Fore.CYAN}  ██║     ██║  ██║██║ ╚████╔╝  ██║███████║███████╗╚██████╗\n"
+            f"{Fore.RED}  PriViSecurity 🛡️ | ELITE HARDEN v11.0 | VERBOSE AUDIT MODE\n"
+        )
 
-    def progress_bar(self, task_name, duration=0.4):
-        # BUG FIX #13: Reduced default duration from 1.5s to 0.4s per check.
-        # 4 checks x 1.5s = 6 seconds of pure artificial waiting added nothing.
-        sys.stdout.write(f"{Fore.WHITE}[*] {task_name.ljust(35)}")
-        for i in range(21):
-            time.sleep(duration / 20)
-            sys.stdout.write(f"{Fore.CYAN}█")
-            sys.stdout.flush()
-        sys.stdout.write(f"{Fore.GREEN} Done!\n")
-
-    def audit_ssh(self):
-        self.progress_bar("Analyzing SSH Configuration")
-        # Secure value expected for each directive
-        checks = {
-            "PermitRootLogin":        "no",
-            "PasswordAuthentication": "no",
-            "Protocol":               "2"
-        }
-        path = "/etc/ssh/sshd_config"
-        # BUG FIX #6: Wrapped file open in try/except — PermissionError or
-        # IOError previously crashed the entire audit with no message.
-        try:
-            with open(path, 'r') as f:
-                lines = f.readlines()
-        except (PermissionError, IOError, FileNotFoundError) as e:
-            self.results.append((f"SSH config unreadable: {e}", "WARN", 10))
-            self.score -= 10
-            return
-
-        # BUG FIX #1: Original checked f"{key} {val}" against the whole file
-        # content — this matched commented lines like "#PermitRootLogin no"
-        # as passing even though they have no effect. Now only checks
-        # non-commented, active directive lines.
-        active = {}
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith('#') or not stripped:
-                continue
-            parts = stripped.split(None, 1)
-            if len(parts) == 2:
-                active[parts[0]] = parts[1]
-
-        for key, secure_val in checks.items():
-            current = active.get(key, "").lower()
-            if current == secure_val:
-                self.results.append((f"SSH {key} is hardened", "PASS", 0))
+    def verbose_check(self, name, command, expected, deduction):
+        """Runs a check with a dedicated progress bar for high visibility."""
+        with tqdm(total=100, desc=f"{Fore.WHITE}Checking {name[:15].ljust(15)}", bar_format="{l_bar}{bar:20}{r_bar}") as pbar:
+            pbar.update(30)
+            # Capture both output and errors
+            res = subprocess.getoutput(command).strip()
+            time.sleep(0.4) # Visual delay for the 'vibe'
+            pbar.update(70)
+            
+            # Logic to determine if the result matches the secure 'expected' string
+            is_secure = expected in res.lower() if res else False
+            
+            if not is_secure:
+                self.score -= deduction
+                status = f"{Fore.RED}[VULNERABLE]"
             else:
-                detail = f"(found: '{current}')" if current else "(not set — default applies)"
-                self.results.append((f"SSH {key} weak {detail}", "FAIL", 15))
-                self.score -= 15
+                status = f"{Fore.GREEN}[SECURE]"
+            
+            msg = f"{status} {name}: Found '{res if res else 'None'}'"
+            self.logs.append(msg.strip())
+            print(f"  {msg}")
 
-    def audit_kernel(self):
-        self.progress_bar("Auditing Kernel Parameters")
-        # BUG FIX #2: Original accepted val == "0" OR "1" for BOTH params,
-        # meaning insecure values could pass. Each param has its own correct value:
-        # accept_redirects = 0 (disabled) is secure
-        # icmp_echo_ignore_broadcasts = 1 (ignored) is secure
-        params = {
-            "net.ipv4.conf.all.accept_redirects":      "0",
-            "net.ipv4.icmp_echo_ignore_broadcasts":    "1",
-        }
-        for param, secure_val in params.items():
+    def run_network_audit(self, target):
+        """Runs an aggressive Nmap scan to identify service versions and CVEs."""
+        print(f"\n{Fore.YELLOW}[*] Starting Network Perimeter Analysis on {target}...")
+        with tqdm(total=100, desc=f"{Fore.CYAN}Nmap Scan", bar_format="{l_bar}{bar:20}{r_bar}") as pbar:
+            pbar.update(40)
+            # -sV: Version detection, --script vuln: Check for vulnerabilities
+            cmd = ["nmap", "-sV", "--script", "vuln", "-T4", target]
             try:
-                # BUG FIX #7: Validate sysctl output format before splitting.
-                # Unexpected output (error message, empty) gave wrong result silently.
-                raw = subprocess.getoutput(f"sysctl {param}")
-                if '=' not in raw:
-                    self.results.append((f"Kernel: {param} unreadable", "WARN", 5))
-                    self.score -= 5
-                    continue
-                val = raw.split('=')[-1].strip()
-                if val == secure_val:
-                    self.results.append((f"Kernel {param}", "PASS", 0))
-                else:
-                    self.results.append((f"Kernel {param} = {val} (should be {secure_val})", "FAIL", 5))
-                    self.score -= 5
+                res = subprocess.check_output(cmd).decode('utf-8', 'ignore')
+                pbar.update(60)
+                
+                open_ports = res.count("open")
+                vulns = res.count("VULNERABLE")
+                self.score -= (open_ports * 5) + (vulns * 20)
+                
+                self.logs.append("\n--- NETWORK SCAN RESULTS ---")
+                self.logs.append(res)
+                print(f"{Fore.GREEN}[+] Network Scan Finished. Found {open_ports} ports and {vulns} vulnerabilities.")
             except Exception as e:
-                self.results.append((f"Kernel check error: {e}", "WARN", 0))
+                print(f"{Fore.RED}[!] Nmap Error: {e}")
 
-    def audit_users(self):
-        self.progress_bar("Deep Scanning for Ghost Admins")
-        cmd = "awk -F: '($3 == 0) { print $1 }' /etc/passwd"
-        output = subprocess.getoutput(cmd)
-        # BUG FIX #8: strip() before split prevents trailing newline from
-        # producing a phantom empty-string entry that triggered false CRITICAL.
-        admins = [a for a in output.strip().split('\n') if a]
-        if len(admins) > 1:
-            self.results.append((f"Multiple UID 0 users: {', '.join(admins)}", "CRITICAL", 30))
-            self.score -= 30
-        else:
-            self.results.append(("No shadow admin accounts found", "PASS", 0))
-
-    def audit_ports(self):
-        self.progress_bar("Checking Unauthorized Ports")
-        output = subprocess.getoutput("ss -tulpn")
-        # BUG FIX #3: Whole-string search matched "ftp" inside "sftp" (secure),
-        # and "rsh" inside service names. Now checks for the service name followed
-        # by a non-word boundary to avoid false positives.
-        insecure = {
-            "telnet":  23,
-            "ftp":     21,
-            "rlogin":  513,
-            "rsh":     514,
-            "rexec":   512,
-        }
-        found = False
-        for service, port in insecure.items():
-            # Match the port number directly — more reliable than service name substring
-            if f":{port} " in output or f":{port}\t" in output:
-                self.results.append((f"Insecure port open: {service} (:{port})", "FAIL", 20))
-                self.score -= 20
-                found = True
-        if not found:
-            self.results.append(("No insecure legacy services detected", "PASS", 0))
+    def world_writable_check(self):
+        """Finds dangerous files that have 777 (world-writable) permissions."""
+        print(f"\n{Fore.YELLOW}[*] Scanning for Dangerous File Permissions (777)...")
+        cmd = "find ~ -type f -perm 0777 2>/dev/null | head -n 5"
+        self.verbose_check("File Permissions", cmd, "none", 15)
 
     def generate_pdf(self):
-        # BUG FIX #9: Show final score in terminal too — previously max(0,...) only
-        # applied inside PDF. User never saw their score printed to screen.
-        final_score = max(0, self.score)
-        color = Fore.GREEN if final_score >= 80 else Fore.YELLOW if final_score >= 50 else Fore.RED
-        print(f"\n{color}[*] Final Security Score: {final_score}/100")
-        print(f"{Fore.YELLOW}[*] Finalizing PDF Report...")
-
+        """Finalizes the PDF report using the latin-1 encoding fix."""
+        print(f"\n{Fore.MAGENTA}[*] Finalizing Encoded PDF Report...")
         pdf = FPDF()
         pdf.add_page()
-
-        # Header
-        pdf.set_font("Arial", "B", 20)
-        pdf.set_text_color(0, 51, 102)
-        pdf.cell(0, 15, "SYSTEM HARDENING AUDIT REPORT", ln=True, align="C")
-
-        # Score
-        score_color = (0, 150, 0) if final_score >= 80 else (200, 150, 0) if final_score >= 50 else (200, 0, 0)
-        pdf.set_font("Arial", "B", 14)
-        pdf.set_text_color(*score_color)
-        pdf.cell(0, 10, f"Final Security Score: {final_score}/100", ln=True, align="C")
-        pdf.set_text_color(0, 0, 0)
-        pdf.ln(10)
-
-        # Table header
-        pdf.set_font("Arial", "B", 10)
-        pdf.set_fill_color(220, 220, 220)
-        pdf.cell(120, 10, "Security Check", 1, fill=True)
-        pdf.cell(35, 10, "Status", 1, fill=True)
-        pdf.cell(35, 10, "Penalty", 1, ln=True, fill=True)
-
-        # BUG FIX #5: Replaced pdf.cell() with pdf.multi_cell() for audit rows.
-        # cell() silently clips text that exceeds 120pt width — long check names
-        # were cut off. multi_cell() wraps text and keeps all content visible.
-        # Because multi_cell resets X, we use a manual row approach instead.
-        pdf.set_font("Arial", "", 9)
-        for item, status, penalty in self.results:
-            status_color = {
-                "PASS": (0, 128, 0),
-                "FAIL": (200, 0, 0),
-                "WARN": (200, 140, 0),
-                "CRITICAL": (180, 0, 0),
-            }.get(status, (0, 0, 0))
-
-            # Save Y position for row alignment
-            y = pdf.get_y()
-            pdf.set_xy(10, y)
-            pdf.multi_cell(120, 8, item, border=1)
-            row_h = pdf.get_y() - y
-
-            pdf.set_xy(130, y)
-            pdf.set_text_color(*status_color)
-            pdf.cell(35, row_h, status, border=1)
-            pdf.set_text_color(0, 0, 0)
-            pdf.set_xy(165, y)
-            pdf.cell(35, row_h, f"-{penalty}", border=1, ln=True)
-
-        # Footer
-        pdf.ln(10)
-        pdf.set_font("Arial", "I", 8)
-        pdf.set_text_color(128, 128, 128)
-        pdf.cell(0, 10, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align="C")
-        # BUG FIX #4: Removed emoji from PDF footer — fpdf latin-1 encoding crash.
-        pdf.cell(0, 10, "Powered by PriViSecurity | Developed by Prince Ubebe", ln=True, align="C")
-
-        # BUG FIX #12: Added date to filename — time-only %H%M%S meant two scans
-        # in the same second would overwrite each other.
-        filename = f"PriViHarden_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        pdf.output(filename)
-        print(f"{Fore.GREEN}[+] Report saved: {filename}")
-
+        pdf.set_font("Arial", 'B', 14)
+        pdf.cell(0, 10, f"PriViHarden Elite Audit Report - Score: {self.score}/100", ln=True)
+        pdf.set_font("Arial", size=10)
+        
+        # Encoding Fix: Prevents crash when Nmap output contains special characters
+        full_text = "\n".join(self.logs)
+        safe_text = full_text.encode('latin-1', 'replace').decode('latin-1')
+        
+        pdf.multi_cell(0, 7, txt=safe_text)
+        pdf.output("PriViHarden_Elite_Report.pdf")
+        print(f"{Fore.GREEN}[+] Report Created: {os.path.abspath('PriViHarden_Elite_Report.pdf')}")
 
 if __name__ == "__main__":
-    auditor = PriViHarden()
+    auditor = PriViHardenElite()
     print(auditor.banner)
-
-    if os.getuid() != 0:
-        print(f"{Fore.RED}[!] ACCESS DENIED: Please run with 'sudo' for a deep system scan.")
-        # BUG FIX #11: Added sys.exit(1) — without it execution falls through
-        # to the audit calls below which then fail with permission errors.
-        sys.exit(1)
-
-    auditor.audit_ssh()
-    auditor.audit_kernel()
-    auditor.audit_users()
-    auditor.audit_ports()
+    
+    # OS Governance Checks
+    auditor.verbose_check("SSH Root Login", "grep '^PermitRootLogin' /etc/ssh/sshd_config", "no", 15)
+    auditor.verbose_check("IP Forwarding", "sysctl net.ipv4.ip_forward", "0", 10)
+    auditor.verbose_check("Password Min Age", "grep '^PASS_MIN_DAYS' /etc/login.defs", "1", 5)
+    
+    # Permission Audits
+    auditor.world_writable_check()
+    
+    # Network Audits
+    target = input(f"\n{Fore.WHITE}Enter Target Host (default: localhost): ").strip() or "localhost"
+    auditor.run_network_audit(target)
+    
+    # Report Generation
     auditor.generate_pdf()
-    print(f"\n{Fore.CYAN}[*] Hardening Audit Complete. Stay Secure.")
-                                                           
+            
