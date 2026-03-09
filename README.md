@@ -1,22 +1,17 @@
-# PriViHarden
-Advanced Linux Hardening Auditor with Deep Kernel Analysis and PDF Reporting.
+# 🛡️ PriViHarden Elite v11.0
+**Automated System Hardening & Vulnerability Auditor**
 
-# 🛡️ PriViHarden v2.0
-### Advanced Linux Hardening Auditor & Reporting Engine
-**Developed by [Prince Ubebe](https://github.com/YOUR_GITHUB_USERNAME) | PriViSecurity**
+PriViHarden is an advanced security suite designed for Linux systems (optimized for Kali Linux). It performs a multi-layer audit of local system configurations, file permissions, and network-facing services.
 
+## 🚀 Features
+- **OS Governance Audit:** Checks SSH configurations and Kernel parameters.
+- **Permission Scanning:** Identifies dangerous world-writable (777) files.
+- **Deep Network Recon:** Integrated Nmap engine for service versioning and CVE detection.
+- **Automated Reporting:** Generates a bug-fixed PDF report with a final security score.
+- **Progress Visibility:** Real-time verbose progress bars for every stage of the audit.
 
-
-**PriViHarden** is a professional-grade Blue Team tool that performs deep system analysis to ensure Linux servers meet industry security standards. It doesn't just scan; it evaluates and scores.
-
-## ✨ New in v2.0
-- **Polished UI:** Real-time progress bars for visual tracking of the audit process.
-- **Deep Kernel Audit:** Scans `sysctl` parameters for networking vulnerabilities.
-- **Ghost Admin Detection:** Identifies unauthorized accounts with UID 0.
-- **Enterprise Reporting:** Generates a structured PDF report suitable for management.
-
-## 🚀 How to Run
-1. **Clone the Repo:**
+## 🛠️ Installation
+1. Clone the repository:
    ```bash
    git clone [https://github.com/YOUR_USERNAME/PriViHarden.git](https://github.com/YOUR_USERNAME/PriViHarden.git)
    cd PriViHarden
