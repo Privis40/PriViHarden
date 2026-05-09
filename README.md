@@ -1,3 +1,11 @@
+<div align="center">
+
+# 🛡️ PriViHarden: Developed by: PriViSecurity**
+
+![PriVi-SPECTER Dashboard](PriViHarden.PNG)
+
+</div>
+
 # 🛡️ PriViHarden Elite v1.0
 **Automated System Hardening & Vulnerability Auditor**
 
