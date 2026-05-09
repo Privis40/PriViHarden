@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import subprocess
 import os
+import sys
 import time
 from tqdm import tqdm
 from colorama import Fore, init
@@ -13,25 +14,32 @@ class PriViHardenElite:
     def __init__(self):
         self.score = 100
         self.logs = []
+        # Fixed branding: Changed PriViSecurity to PriViHarden
         self.banner = (
             f"\n{Fore.CYAN}  ██████╗ ██████╗ ██╗██╗   ██╗██╗███████╗███████╗ ██████╗\n"
             f"{Fore.CYAN}  ██╔══██╗██╔══██╗██║██║   ██║██║██╔════╝██╔════╝██╔════╝\n"
             f"{Fore.CYAN}  ██████╔╝██████╔╝██║██║   ██║██║███████╗█████╗  ██║     \n"
             f"{Fore.CYAN}  ██╔═══╝ ██╔══██╗██║╚██╗ ██╔╝ ██║╚════██║██╔══╝  ██║     \n"
             f"{Fore.CYAN}  ██║     ██║  ██║██║ ╚████╔╝  ██║███████║███████╗╚██████╗\n"
-            f"{Fore.RED}  PriViSecurity 🛡️ | ELITE HARDEN v11.0 | VERBOSE AUDIT MODE\n"
+            f"{Fore.RED}  PriViHarden 🛡️ | ELITE HARDEN v11.0 | VERBOSE AUDIT MODE\n"
         )
 
+    def check_privileges(self):
+        """Ensure the script is running as root."""
+        if os.geteuid() != 0:
+            print(f"{Fore.RED}[!] Error: This audit requires root/sudo privileges to read system configs.")
+            sys.exit(1)
+
     def verbose_check(self, name, command, expected, deduction):
-        """Runs a check with a dedicated progress bar for high visibility."""
+        """Runs a check with a dedicated progress bar."""
         with tqdm(total=100, desc=f"{Fore.WHITE}Checking {name[:15].ljust(15)}", bar_format="{l_bar}{bar:20}{r_bar}") as pbar:
             pbar.update(30)
-            # Capture both output and errors
+            # Use shell=True for complex pipes, though generally we'd prefer list-based for safety
             res = subprocess.getoutput(command).strip()
-            time.sleep(0.4) # Visual delay for the 'vibe'
+            time.sleep(0.3) 
             pbar.update(70)
             
-            # Logic to determine if the result matches the secure 'expected' string
+            # Logic: Ensure the result exists and contains the expected secure value
             is_secure = expected in res.lower() if res else False
             
             if not is_secure:
@@ -40,12 +48,18 @@ class PriViHardenElite:
             else:
                 status = f"{Fore.GREEN}[SECURE]"
             
-            msg = f"{status} {name}: Found '{res if res else 'None'}'"
+            clean_res = res.replace('\n', ' ') if res else 'Not Found'
+            msg = f"{status} {name}: Result '{clean_res}'"
             self.logs.append(msg.strip())
             print(f"  {msg}")
 
     def run_network_audit(self, target):
-        """Runs an aggressive Nmap scan to identify service versions and CVEs."""
+        """Runs Nmap scan to identify service versions and CVEs."""
+        # Check if nmap is installed first
+        if subprocess.call(["which", "nmap"], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT) != 0:
+            print(f"{Fore.RED}[!] Nmap not found. Skipping network audit.")
+            return
+
         print(f"\n{Fore.YELLOW}[*] Starting Network Perimeter Analysis on {target}...")
         with tqdm(total=100, desc=f"{Fore.CYAN}Nmap Scan", bar_format="{l_bar}{bar:20}{r_bar}") as pbar:
             pbar.update(40)
@@ -66,44 +80,51 @@ class PriViHardenElite:
                 print(f"{Fore.RED}[!] Nmap Error: {e}")
 
     def world_writable_check(self):
-        """Finds dangerous files that have 777 (world-writable) permissions."""
+        """Finds dangerous files that have 777 permissions."""
         print(f"\n{Fore.YELLOW}[*] Scanning for Dangerous File Permissions (777)...")
-        cmd = "find ~ -type f -perm 0777 2>/dev/null | head -n 5"
-        self.verbose_check("File Permissions", cmd, "none", 15)
+        # Optimized to only look in home and ignore permission denied errors
+        cmd = "find /home -type f -perm 0777 2>/dev/null | head -n 5"
+        self.verbose_check("World Writable", cmd, "none", 15)
 
     def generate_pdf(self):
-        """Finalizes the PDF report using the latin-1 encoding fix."""
+        """Finalizes the PDF report."""
         print(f"\n{Fore.MAGENTA}[*] Finalizing Encoded PDF Report...")
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font("Arial", 'B', 14)
-        pdf.cell(0, 10, f"PriViHarden Elite Audit Report - Score: {self.score}/100", ln=True)
-        pdf.set_font("Arial", size=10)
+        pdf.set_font("Arial", 'B', 16)
+        pdf.cell(0, 10, "PriViHarden Elite Audit Report", ln=True, align='C')
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(0, 10, f"Final Security Score: {max(self.score, 0)}/100", ln=True, align='C')
+        pdf.ln(10)
         
-        # Encoding Fix: Prevents crash when Nmap output contains special characters
+        pdf.set_font("Arial", size=10)
         full_text = "\n".join(self.logs)
         safe_text = full_text.encode('latin-1', 'replace').decode('latin-1')
         
         pdf.multi_cell(0, 7, txt=safe_text)
-        pdf.output("PriViHarden_Elite_Report.pdf")
-        print(f"{Fore.GREEN}[+] Report Created: {os.path.abspath('PriViHarden_Elite_Report.pdf')}")
+        report_name = "PriViHarden_Elite_Report.pdf"
+        pdf.output(report_name)
+        print(f"{Fore.GREEN}[+] Report Created: {os.path.abspath(report_name)}")
 
 if __name__ == "__main__":
     auditor = PriViHardenElite()
     print(auditor.banner)
     
-    # OS Governance Checks
-    auditor.verbose_check("SSH Root Login", "grep '^PermitRootLogin' /etc/ssh/sshd_config", "no", 15)
-    auditor.verbose_check("IP Forwarding", "sysctl net.ipv4.ip_forward", "0", 10)
-    auditor.verbose_check("Password Min Age", "grep '^PASS_MIN_DAYS' /etc/login.defs", "1", 5)
+    # 1. Check for root privileges
+    auditor.check_privileges()
     
-    # Permission Audits
+    # 2. OS Governance Checks
+    # Improved grep to ignore commented lines (^[^#]*)
+    auditor.verbose_check("SSH Root Login", "grep '^[^#]*PermitRootLogin' /etc/ssh/sshd_config", "no", 15)
+    auditor.verbose_check("IP Forwarding", "sysctl net.ipv4.ip_forward", "0", 10)
+    auditor.verbose_check("Password Min Age", "grep '^[^#]*PASS_MIN_DAYS' /etc/login.defs", "1", 5)
+    
+    # 3. Permission Audits
     auditor.world_writable_check()
     
-    # Network Audits
+    # 4. Network Audits
     target = input(f"\n{Fore.WHITE}Enter Target Host (default: localhost): ").strip() or "localhost"
     auditor.run_network_audit(target)
     
-    # Report Generation
+    # 5. Report Generation
     auditor.generate_pdf()
-            
