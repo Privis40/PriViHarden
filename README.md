@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛡️ PriViHarden: Developed by: PriViSecurity**
+# 🛡️ PriViHarden: Developed by: PriViSecurity
 
 ![PriVi-SPECTER Dashboard](PriViHarden.PNG)
 
