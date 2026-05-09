@@ -14,5 +14,9 @@ PriViHarden is an advanced security suite designed for Linux systems (optimized 
 1. Clone the repository:
    ```bash
    git clone [https://github.com/YOUR_USERNAME/PriViHarden.git](https://github.com/YOUR_USERNAME/PriViHarden.git)
+
    cd PriViHarden
-   
+
+   sudo pip3 install -r requirements.txt --break-system-packages
+
+   sudo python3 priviharden.py
