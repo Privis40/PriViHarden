@@ -1,4 +1,4 @@
-# 🛡️ PriViHarden Elite v11.0
+# 🛡️ PriViHarden Elite v1.0
 **Automated System Hardening & Vulnerability Auditor**
 
 PriViHarden is an advanced security suite designed for Linux systems (optimized for Kali Linux). It performs a multi-layer audit of local system configurations, file permissions, and network-facing services.
