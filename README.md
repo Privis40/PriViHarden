@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛡️ PriViHarden Linux Vulnerability Auditor v2.0: Developed by PriViSecurity
+# 🛡️ PriViHarden Linux Vulnerability Auditor v1.0: Developed by PriViSecurity
 
 ![PriViHarden Dashboard](PriViHarden.PNG)
 
