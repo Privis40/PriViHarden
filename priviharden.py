@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════════╗
-║       PriViHarden Linux Vulnerability Auditor v2.0               ║
+║       PriViHarden Linux Vulnerability Auditor v1.0               ║
 ║       Linux Hardening & Security Configuration Auditor           ║
 ║       Developed by Prince Ubebe | PriViSecurity                  ║
 ╚══════════════════════════════════════════════════════════════════╝
